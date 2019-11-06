@@ -53,8 +53,7 @@ module Chainer
     end
 
     def self.split_dataset_random(dataset, first_size, seed: nil)
-      # order = np.random.RandomState(seed).permutation(len(dataset)) todo
-      order = nil
+      order = (0...dataset.size).to_a.shuffle # instead of `np.random.RandomState(seed).permutation(len(dataset))`
       split_dataset(dataset, first_size, order)
     end
   end
