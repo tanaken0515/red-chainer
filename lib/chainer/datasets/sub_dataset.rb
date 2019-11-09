@@ -46,15 +46,15 @@ module Chainer
       raise ArgumentError, 'split_at must be non-negative' if split_at < 0
       raise ArgumentError, 'split_at exceeds the dataset size' if split_at > n_examples
 
-      subset1 = SubDataset.new(dataset, 0, split_at, order)
-      subset2 = SubDataset.new(dataset, split_at, n_examples, order)
+      subset1 = SubDataset.new(dataset, 0, split_at, order: order)
+      subset2 = SubDataset.new(dataset, split_at, n_examples, order: order)
 
       [subset1, subset2]
     end
 
     def self.split_dataset_random(dataset, first_size, seed: nil)
       order = (0...dataset.size).to_a.shuffle # instead of `np.random.RandomState(seed).permutation(len(dataset))`
-      split_dataset(dataset, first_size, order)
+      split_dataset(dataset, first_size, order: order)
     end
   end
 end
