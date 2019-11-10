@@ -20,17 +20,17 @@ module Chainer
         @size
       end
 
-      def get_example(index)
-        if index >= 0
-          if index >= @size
+      def get_example(i)
+        if i >= 0
+          if i >= @size
             raise IndexError, 'dataset index out of range'
           end
-          index = @start + 1
+          index = @start + i
         else
-          if index < -1 * @size
+          if i < -1 * @size
             raise IndexError, 'dataset index out of range'
           end
-          index = @finish + 1
+          index = @finish + i
         end
 
         index = @order[index] if @order
