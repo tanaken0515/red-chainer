@@ -85,23 +85,17 @@ module Chainer
           x, w = inputs[0...2]
           b = inputs.size == 3 ? inputs[2] : nil
 
-          unless inputs.all? { |i| i.is_a?(Numo::NArray) }
+          xm = Chainer.get_array_module(x)
+          unless inputs.all? { |i| i.is_a?(xm::NArray) }
             if b.nil?
-              raise TypeError, "Numo::NArray must not be used together w: #{w.class}, x: #{x.class}"
+              raise TypeError, "#{xm}::NArray must not be used together w: #{w.class}, x: #{x.class}"
             else
-              raise TypeError, "Numo::NArray must not be used together w: #{w.class}, x: #{x.class}, b: #{b.class}"
+              raise TypeError, "#{xm}::NArray must not be used together w: #{w.class}, x: #{x.class}, b: #{b.class}"
             end
           end
 
           kh, kw = w.shape[2..-1]
           _, _, x_h, x_w = x.shape
-
-          gcol = Chainer::Utils::Math.tensordot(w, x, [0, 1]).cast_to(x.class)
-          # - k, m, n: shape of out_channel
-          # - b: number of inputs
-          # - h, w: height and width of kernels
-          # k, m, n, b, h, w -> b, k, m, n, h, w
-          gcol = gcol.transpose(3, 0, 1, 2, 4, 5)
 
           if @outh.nil?
             @outh = Chainer::Utils::Conv.get_deconv_outsize(x_h, kh, @sy, @ph)
@@ -112,11 +106,29 @@ module Chainer
             raise TypeError, 'Width in the output should be positive.' if @outw <= 0
           end
 
+          set_cover_all(x, w)
+          if xm == Cumo and Chainer::CUDA.cudnn_enabled? and !@cover_all
+            return _forward_cudnn(x, w, b)
+          end
+
+          gcol = Chainer::Utils::Math.tensordot(w, x, [0, 1]).cast_to(x.class)
+          # - k, m, n: shape of out_channel
+          # - b: number of inputs
+          # - h, w: height and width of kernels
+          # k, m, n, b, h, w -> b, k, m, n, h, w
+          gcol = gcol.transpose(3, 0, 1, 2, 4, 5)
+
           y = Chainer::Utils::Conv.col2im(gcol, @sy, @sx, @ph, @pw, @outh, @outw)
           if !b.nil?
             y += b.reshape(1, b.size, 1, 1)
           end
           [y]
+        end
+
+        private def _forward_cudnn(x, w, b)
+          w = w.cast_to(x.class)
+          b = b.cast_to(x.class) if b
+          [x.conv_transpose(w, b: b, stride: [@sy, @sx], pad: [@ph, @pw], out_size: [@outh, @outw])]
         end
 
         def backward(indexes, grad_outputs)
@@ -127,8 +139,8 @@ module Chainer
 
           if indexes.include?(0)
             set_cover_all(x, w) if @cover_all.nil?
-            gw = Chainer::Functions::Connection::Convolution2DFunction.convolution_2d(gy, w, stride: [@sy, @sx], pad: [@ph, @pw], cover_all: @cover_all)
-            ret << gw
+            gx = Chainer::Functions::Connection::Convolution2DFunction.convolution_2d(gy, w, stride: [@sy, @sx], pad: [@ph, @pw], cover_all: @cover_all)
+            ret << gx
           end
 
           if indexes.include?(1)

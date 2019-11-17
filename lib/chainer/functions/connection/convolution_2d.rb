@@ -20,7 +20,7 @@ module Chainer
         # The right-most (or bottom-most) patches do not run over the padded spatial size.
         # Let :math:`(s_Y, s_X)` be the stride of filter application.
         # Then, the output size :math:`(h_O, w_O)` is determined by the following equations:
-        # 
+        #
         # math:
         #  h_O &= (h_I + 2h_P - h_K) / s_Y + 1,\\\\
         #   w_O &= (w_I + 2w_P - w_K) / s_X + 1.
@@ -28,7 +28,7 @@ module Chainer
         # So, if the last stride of filter does not cover the end of spatial locations,
         # an addtional stride will be applied to the end part of spatial locations.
         # In this case, the output size :math:`(h_O, w_O)` is determined by the following equations:
-        # 
+        #
         # math:
         #  h_O &= (h_I + 2h_P - h_K + s_Y - 1) / s_Y + 1,\\\\
         #  w_O &= (w_I + 2w_P - w_K + s_X - 1) / s_X + 1.
@@ -64,20 +64,34 @@ module Chainer
           w = inputs[1]
           b = inputs.size == 3 ? inputs[2] : nil
 
-          unless inputs.all? { |i| i.is_a?(Numo::NArray) }
+          xm = Chainer.get_array_module(x)
+          unless inputs.all? { |i| i.is_a?(xm::NArray) }
             if b.nil?
-              raise TypeError, "Numo::NArray must not be used together w: #{w.class}, x: #{x.class}"
+              raise TypeError, "#{xm}::NArray must not be used together w: #{w.class}, x: #{x.class}"
             else
-              raise TypeError, "Numo::NArray must not be used together w: #{w.class}, x: #{x.class}, b: #{b.class}"
+              raise TypeError, "#{xm}::NArray must not be used together w: #{w.class}, x: #{x.class}, b: #{b.class}"
             end
+          end
+
+          if xm == Cumo and Chainer::CUDA.cudnn_enabled? and !@cover_all
+            return _forward_cudnn(x, w, b)
           end
 
           kh, kw = w.shape[2..-1]
           col = Chainer::Utils::Conv.im2col(x, kh, kw, @sy, @sx, @ph, @pw, cover_all: @cover_all)
           y = Chainer::Utils::Math.tensordot(col, w, [[1, 2, 3], [1, 2, 3]]).cast_to(x.class)
-          y += b if b
+          y = y.transpose(0, 3, 1, 2) # (N, oC, oH, oW)
+          if !b.nil?
+            y += b.reshape(1, b.size, 1, 1)
+          end
 
-          [y.transpose(0, 3, 1, 2)]
+          [y]
+        end
+
+        private def _forward_cudnn(x, w, b)
+          w = w.cast_to(x.class)
+          b = b.cast_to(x.class) if b
+          [x.conv(w, b: b, stride: [@sy, @sx], pad: [@ph, @pw])]
         end
 
         def backward(indexes, grad_outputs)

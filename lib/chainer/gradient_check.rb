@@ -19,6 +19,7 @@ module Chainer
   # @return [Array] Numerical gradient arrays corresponding to +inputs+.
   #
   def numerical_grad(f, inputs, grad_outputs, eps=1e-3)
+    eps = eps.to_f # Convert Rational to float because NArray does not support calc with Rational
     raise unless eps > 0
     inputs = inputs.to_a
     grad_outputs = grad_outputs.to_a
@@ -172,11 +173,11 @@ module Chainer
       casted_xs = x_data.map { |x| Chainer::Variable.new(x) }
     else
       raise '`dtype` is allowed only float type' if dtype != xm::DFloat && dtype != xm::SFloat
-      casted_xs = x_data.map { |x| x.is_a?(Numo::NArray) ? Chainer::Variable.new(x.cast_to(dtype)) : x  }
+      casted_xs = x_data.map { |x| x.is_a?(xm::NArray) ? Chainer::Variable.new(x.cast_to(dtype)) : x  }
     end
 
     if no_grads.nil?
-      no_grads = xs.map { |x| x.dtype != Numo::SFloat && x.dtype != Numo::DFloat }
+      no_grads = xs.map { |x| x.dtype != xm::SFloat && x.dtype != xm::DFloat }
     else
       raise "Length of no_grads param and xs should be same." if no_grads.size != xs.size
     end
@@ -195,7 +196,7 @@ module Chainer
     params_grad = params.map(&:grad)
 
     if dtype.nil?
-      one = Numo::DFloat.new().fill(1.0)
+      one = xm::DFloat.new().fill(1.0)
     else
       one = dtype.new().fill(1.0)
     end

@@ -45,7 +45,7 @@ $ ruby examples/mnist/mnist.rb
 
 ### Run MNIST example with GPU
 
-On GPU machine, add `gem 'cumo'` on Gemfile and do `bundle install`.
+On GPU machine, add `gem 'cumo'` on **Gemfile.local** and do `bundle install`.
 
 Run the example with `--gpu` option whose value indicates GPU device ID such as:
 
@@ -63,7 +63,7 @@ $ bundle exec ruby test/run_test.rb
 
 ### Run tests with Cumo
 
-On GPU machine, add `gem 'cumo'` on Gemfile and do `bundle install`.
+On GPU machine, add `gem 'cumo'` on **Gemfile.local** and do `bundle install`.
 
 Run tests with `RED_CHAINER_GPU` environment variable whose value indicates GPU device ID such as:
 

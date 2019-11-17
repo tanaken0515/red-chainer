@@ -29,7 +29,7 @@ class Chainer::Links::Connection::EmbedIDTest < Test::Unit::TestCase
       ndindex = @x.shape.size.times.reduce([]) do |ndi, j|
         ndi << (i / @x.shape.drop(j+1).reduce(1, &:*)) % @x.shape[j]
       end
-      y_expect[*ndindex, true] = @x[*ndindex] == -1 ? 0 : @w[@x[*ndindex], true]
+      y_expect[*ndindex, true] = @x[*ndindex] == -1 ? 0 : @w[@x[*ndindex].to_i, true]
     end
 
     assert_equal(y_expect.to_a, y.data.to_a)
@@ -37,7 +37,7 @@ class Chainer::Links::Connection::EmbedIDTest < Test::Unit::TestCase
 
   data(data)
   def test_backward(data)
-    Chainer::check_backward(@link, @x, @gy, @link.w)
+    Chainer::check_backward(@link, @x, @gy, @link.w, atol: 1e-4)
   end
 end
 

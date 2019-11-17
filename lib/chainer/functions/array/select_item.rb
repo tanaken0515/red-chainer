@@ -20,14 +20,10 @@ module Chainer
           @in_shape = x.shape
           @in_dtype = x.class
 
-          # TODO: x[six.moves.range(t.size), t]
-          new_x = x.class.zeros(t.size)
-          t.size.times.each do |i|
-            new_x[i] = x[i, t[i]]
-          end
-          x = new_x
+          return [x.class.zeros(0)] if t.size == 0
 
-          [x]
+          # x[six.moves.range(t.size), t]
+          [x[true, t].diagonal.dup]
         end
 
         def backward(indexes, gy)
@@ -54,11 +50,8 @@ module Chainer
         def forward(inputs)
           gx = @dtype.zeros(*@shape)
 
-          # TODO: gx[six.moves.range(self.t.size), self.t] = inputs[0]
-          # binding.pry
-          @t.size.times.each do |i|
-            gx[i, @t[i]] = inputs[0][i]
-          end
+          # gx[six.moves.range(self.t.size), self.t] = inputs[0]
+          gx.at((0...@t.size).to_a, @t)[true] = inputs[0] unless @t.empty?
 
           [gx]
         end
